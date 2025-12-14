@@ -34,11 +34,11 @@ const DB_THRESHOLDS = [
 
 // Theme assets mapping
 const THEME_ASSETS = {
-    0: { svg: '../media/welcom_logo.svg', bg: '../media/background_image_0.png' },
-    1: { svg: '../media/noise_level_msg_1.svg', bg: '../media/background_image_1.png' },
-    2: { svg: '../media/noise_level_msg_2.svg', bg: '../media/background_image_2.png' },
-    3: { svg: '../media/noise_level_msg_3.svg', bg: '../media/background_image_3.png' },
-    4: { svg: '../media/noise_level_msg_4.svg', bg: '../media/background_image_4.png' }
+    0: { svg: './media/welcom_logo.svg', bg: './media/background_image_0.png' },
+    1: { svg: './media/noise_level_msg_1.svg', bg: './media/background_image_1.png' },
+    2: { svg: './media/noise_level_msg_2.svg', bg: './media/background_image_2.png' },
+    3: { svg: './media/noise_level_msg_3.svg', bg: './media/background_image_3.png' },
+    4: { svg: './media/noise_level_msg_4.svg', bg: './media/background_image_4.png' }
 };
 
 // ===========================================
@@ -182,8 +182,8 @@ function showErrorNotification(title, body) {
     try {
         const notification = new Notification(title, {
             body: body,
-            icon: '../icons/icon-192x192.png',
-            badge: '../icons/icon-96x96.png',
+            icon: './icons/icon-192x192.png',
+            badge: './icons/icon-96x96.png',
             tag: 'dbwatch-error', // Prevent duplicate notifications
             requireInteraction: false,
             silent: false
