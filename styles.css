@@ -24,8 +24,8 @@ body {
     flex-direction: column;
     
     /* CSS Variables for background cross-fade */
-    --current-bg: url('../media/background_image_0.png');
-    --next-bg: url('../media/background_image_0.png');
+    --current-bg: url('./media/background_image_0.png');
+    --next-bg: url('./media/background_image_0.png');
 }
 
 /* Background Image Pseudo-elements for Cross-Fade */
