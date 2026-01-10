@@ -24,8 +24,8 @@ body {
     flex-direction: column;
     
     /* CSS Variables for background cross-fade */
-    --current-bg: url('./media/background_image_0.png');
-    --next-bg: url('./media/background_image_0.png');
+    --current-bg: url('../media/background_image_0.png');
+    --next-bg: url('../media/background_image_0.png');
 }
 
 /* Background Image Pseudo-elements for Cross-Fade */
@@ -67,6 +67,20 @@ body.transitioning::after {
 }
 
 /* ===========================================
+   Animation Canvas Overlay
+   =========================================== */
+#main_canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10;
+    pointer-events: none;
+    background: transparent;
+    display: block;
+}
+
+/* ===========================================
    Gear Icon (Controls Toggle)
    =========================================== */
 .gear-icon {
@@ -83,7 +97,7 @@ body.transitioning::after {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.3s ease, transform 0.3s ease;
+    transition: background 0.3s ease, transform 0.3s ease, opacity 0.2s ease;
     color: white;
 }
 
@@ -102,23 +116,22 @@ body.transitioning::after {
     height: 28px;
 }
 
-/* ===========================================
-   Message Board (Center Area)
-   =========================================== */
-.message-board {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 20px 120px;
+/* Gear auto-hide state */
+.gear-icon.gear--hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
-.message-board img {
-    max-width: 80%;
-    max-height: 60vh;
-    object-fit: contain;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-    transition: opacity 0.5s ease;
+/* Gear hit area for hover detection */
+.gear-hit {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 70px;
+    height: 70px;
+    z-index: 99;
+    /* Invisible hit area */
+    background: transparent;
 }
 
 /* ===========================================
@@ -177,6 +190,7 @@ body.transitioning::after {
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     contain: layout style paint; /* Performance optimization */
+    z-index: 40;
 }
 
 .visualizer .bar {
@@ -232,10 +246,23 @@ body.transitioning::after {
     background: rgba(0, 0, 0, 0.3);
 }
 
+.dialog-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
 .dialog-header h2 {
     font-size: 20px;
     font-weight: 600;
     margin: 0;
+}
+
+/* Version Label */
+.version-label {
+    opacity: 0.7;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .close-btn {

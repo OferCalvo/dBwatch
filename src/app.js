@@ -1,3 +1,5 @@
+import { onReading } from './animations/controller.js';
+
 /**
  * dBwatch PWA - Stage 5: Polish & Integration
  * Notifications, edge cases, performance tuning
@@ -23,23 +25,8 @@ const MIN_CLICK_INTERVAL = 500; // Minimum time between Start/Stop clicks
 const VISUALIZER_UPDATE_INTERVAL = 500;  // 0.5 seconds
 const DB_READING_UPDATE_INTERVAL = 2000; // 2 seconds
 
-// dB Threshold levels for theming
-const DB_THRESHOLDS = [
-    { min: -Infinity, max: 70, level: 0 },
-    { min: 70, max: 85, level: 1 },
-    { min: 85, max: 100, level: 2 },
-    { min: 100, max: 120, level: 3 },
-    { min: 120, max: Infinity, level: 4 }
-];
-
-// Theme assets mapping
-const THEME_ASSETS = {
-    0: { svg: './media/welcom_logo.svg', bg: './media/background_image_0.png' },
-    1: { svg: './media/noise_level_msg_1.svg', bg: './media/background_image_1.png' },
-    2: { svg: './media/noise_level_msg_2.svg', bg: './media/background_image_2.png' },
-    3: { svg: './media/noise_level_msg_3.svg', bg: './media/background_image_3.png' },
-    4: { svg: './media/noise_level_msg_4.svg', bg: './media/background_image_4.png' }
-};
+// Static background (animations will handle visual feedback instead of dynamic backgrounds)
+const STATIC_BACKGROUND = '../media/background_image_0.png';
 
 // ===========================================
 // DOM Elements
@@ -58,7 +45,6 @@ const dbValueElement = dbReading.querySelector('.db-value');
 const statusMessage = document.getElementById('status_message');
 const startBtn = document.getElementById('start_btn');
 const stopBtn = document.getElementById('stop_btn');
-const messageSvg = document.getElementById('message_svg');
 
 // ===========================================
 // Audio Engine State
@@ -76,9 +62,7 @@ let animationId = null;
 // ===========================================
 let lastVisualizerUpdate = 0;
 let lastDbReadingUpdate = 0;
-let currentThemeLevel = 0;
 let currentDb = 0;
-let isTransitioning = false;
 
 // ===========================================
 // Notification State
@@ -182,8 +166,8 @@ function showErrorNotification(title, body) {
     try {
         const notification = new Notification(title, {
             body: body,
-            icon: './icons/icon-192x192.png',
-            badge: './icons/icon-96x96.png',
+            icon: '../icons/icon-192x192.png',
+            badge: '../icons/icon-96x96.png',
             tag: 'dbwatch-error', // Prevent duplicate notifications
             requireInteraction: false,
             silent: false
@@ -434,7 +418,6 @@ function processAudio() {
     // Update dB display at specified interval
     if (now - lastDbReadingUpdate >= DB_READING_UPDATE_INTERVAL) {
         updateDbDisplay(db);
-        updateTheme(db);
         lastDbReadingUpdate = now;
     }
 
@@ -472,6 +455,18 @@ function generateSimVisualizerData(db) {
 // UI Update Functions
 // ===========================================
 
+function syncAnimationWithDb(db) {
+    try {
+        const normalizedDb = Number.isFinite(db) ? db : 0;
+        const result = onReading(normalizedDb);
+        if (result && typeof result.catch === 'function') {
+            result.catch(error => console.warn('[animations] controller update failed', error));
+        }
+    } catch (error) {
+        console.warn('[animations] controller dispatch error', error);
+    }
+}
+
 /**
  * Update the dB reading display
  * @param {number} db - Decibel value
@@ -484,6 +479,8 @@ function updateDbDisplay(db) {
         const clampedDb = Math.max(0, Math.min(150, db));
         dbValueElement.textContent = Math.round(clampedDb);
     }
+
+    syncAnimationWithDb(db);
 }
 
 /**
@@ -514,107 +511,8 @@ function resetVisualizer() {
 }
 
 // ===========================================
-// Theme Functions
+// Visualizer Functions
 // ===========================================
-
-/**
- * Get theme level based on dB value
- * @param {number} db - Decibel value
- * @returns {number} Theme level (0-4)
- */
-function getThemeLevel(db) {
-    if (db === -Infinity || isNaN(db)) {
-        return 0;
-    }
-    
-    for (const threshold of DB_THRESHOLDS) {
-        if (db >= threshold.min && db < threshold.max) {
-            return threshold.level;
-        }
-    }
-    return 0;
-}
-
-/**
- * Update theme based on dB level
- * @param {number} db - Decibel value
- */
-function updateTheme(db) {
-    const newLevel = getThemeLevel(db);
-    
-    if (newLevel !== currentThemeLevel) {
-        currentThemeLevel = newLevel;
-        const assets = THEME_ASSETS[newLevel];
-        
-        // Update message SVG
-        updateMessageSvg(assets.svg);
-        
-        // Update background with cross-fade
-        setBackground(assets.bg);
-        
-        console.log(`Theme changed to level ${newLevel} (dB: ${Math.round(db)})`);
-    }
-}
-
-/**
- * Update the message SVG in the message board
- * @param {string} svgUrl - URL of the SVG to display
- */
-function updateMessageSvg(svgUrl) {
-    if (messageSvg) {
-        // Add fade-out effect
-        messageSvg.style.opacity = '0';
-        
-        setTimeout(() => {
-            messageSvg.src = svgUrl;
-            messageSvg.style.opacity = '1';
-        }, 250);
-    }
-}
-
-/**
- * Set background with cross-fade animation
- * @param {string} imageUrl - URL of the background image
- */
-function setBackground(imageUrl) {
-    if (isTransitioning) {
-        return; // Don't interrupt ongoing transition
-    }
-    
-    const body = document.body;
-    
-    // Set the new image on ::after
-    body.style.setProperty('--next-bg', `url('${imageUrl}')`);
-    
-    // Trigger cross-fade
-    isTransitioning = true;
-    body.classList.add('transitioning');
-    
-    // After transition completes, swap images and reset
-    setTimeout(() => {
-        body.style.setProperty('--current-bg', `url('${imageUrl}')`);
-        body.classList.remove('transitioning');
-        isTransitioning = false;
-    }, 800); // Match CSS transition duration
-}
-
-/**
- * Reset theme to default (level 0)
- */
-function resetTheme() {
-    currentThemeLevel = 0;
-    const assets = THEME_ASSETS[0];
-    
-    if (messageSvg) {
-        messageSvg.src = assets.svg;
-        messageSvg.style.opacity = '1';
-    }
-    
-    document.body.style.setProperty('--current-bg', `url('${assets.bg}')`);
-    document.body.style.setProperty('--next-bg', `url('${assets.bg}')`);
-    document.body.classList.remove('transitioning');
-    isTransitioning = false;
-}
 
 /**
  * Initialize 30 empty bars in visualizer
@@ -650,6 +548,8 @@ function toggleDialog() {
     } else {
         controlsDialog.showModal();
     }
+    // Update gear visibility based on dialog state
+    updateGearVisibility();
 }
 
 /**
@@ -665,6 +565,7 @@ function handleDialogClick(event) {
     );
     if (!isInDialog) {
         controlsDialog.close();
+        updateGearVisibility();
     }
 }
 
@@ -708,7 +609,6 @@ function handleSimModeToggle() {
     if (isSimMode && isListening) {
         const db = parseInt(simSlider.value, 10);
         updateDbDisplay(db);
-        updateTheme(db);
         updateVisualizer(generateSimVisualizerData(db));
     }
 }
@@ -772,7 +672,6 @@ function handleSimSliderChange() {
     // If sim mode is active and listening, update immediately
     if (simModeToggle.checked && isListening) {
         updateDbDisplay(db);
-        updateTheme(db);
         updateVisualizer(generateSimVisualizerData(db));
     }
 }
@@ -783,7 +682,10 @@ function handleSimSliderChange() {
 
 // Dialog controls
 gearIcon.addEventListener('click', toggleDialog);
-closeDialogBtn.addEventListener('click', () => controlsDialog.close());
+closeDialogBtn.addEventListener('click', () => {
+    controlsDialog.close();
+    updateGearVisibility();
+});
 controlsDialog.addEventListener('click', handleDialogClick);
 
 // Toggle switches
@@ -797,6 +699,92 @@ startBtn.addEventListener('click', startListening);
 stopBtn.addEventListener('click', stopListening);
 
 // ===========================================
+// Gear Auto-Hide System
+// ===========================================
+
+let gearHideTimer = null;
+const GEAR_HIDE_DELAY = 2000;
+
+// Create invisible hit area for hover detection
+const gearHitArea = document.createElement('div');
+gearHitArea.className = 'gear-hit';
+document.body.appendChild(gearHitArea);
+
+/**
+ * Show the gear icon and clear any pending hide timer
+ */
+function showGear() {
+    gearIcon.classList.remove('gear--hidden');
+    clearTimeout(gearHideTimer);
+}
+
+/**
+ * Schedule the gear icon to hide after delay (only if controls are closed)
+ */
+function scheduleGearHide() {
+    clearTimeout(gearHideTimer);
+    // Only hide if controls dialog is closed
+    if (!controlsDialog.open) {
+        gearHideTimer = setTimeout(() => {
+            gearIcon.classList.add('gear--hidden');
+        }, GEAR_HIDE_DELAY);
+    }
+}
+
+/**
+ * Update gear visibility based on dialog state
+ * Called when dialog opens/closes
+ */
+function updateGearVisibility() {
+    if (controlsDialog.open) {
+        // Dialog is open - show gear and cancel any hide timer
+        showGear();
+    } else {
+        // Dialog is closed - schedule auto-hide
+        scheduleGearHide();
+    }
+}
+
+// Hover-to-show: reveal gear when cursor enters hit area
+gearHitArea.addEventListener('mouseenter', () => {
+    showGear();
+});
+
+// Hide again on mouse leave (if controls are closed)
+gearHitArea.addEventListener('mouseleave', () => {
+    scheduleGearHide();
+});
+
+// Also handle hover directly on the gear icon
+gearIcon.addEventListener('mouseenter', () => {
+    showGear();
+});
+
+gearIcon.addEventListener('mouseleave', () => {
+    scheduleGearHide();
+});
+
+// ===========================================
+// Version Label
+// ===========================================
+
+/**
+ * Load version from manifest.json and display in Controls dialog
+ */
+async function attachVersionLabel() {
+    try {
+        const res = await fetch('./manifest.json');
+        const manifest = await res.json();
+        const el = document.getElementById('controls_version');
+        if (el && manifest.version) {
+            el.textContent = `( version: ${manifest.version} )`;
+        }
+    } catch (e) {
+        console.warn('Version label: manifest not found or invalid', e);
+    }
+}
+
+// ===========================================
 // Initialization
 // ===========================================
 
@@ -806,8 +794,10 @@ document.addEventListener('DOMContentLoaded', () => {
     preloadAssets();
     registerServiceWorker();
     requestNotificationPermission();
-    setupImageErrorHandlers();
-    console.log('dBwatch initialized (Stage 5 - Polish & Integration)');
+    attachVersionLabel();
+    // Start gear auto-hide timer on page load
+    scheduleGearHide();
+    console.log('dBwatch initialized (v2.0 - Refactored)');
 });
 
 // Handle page visibility changes (pause/resume when tab hidden/visible)
@@ -885,51 +875,18 @@ async function resumeAudioContext() {
 }
 
 // ===========================================
-// Asset Preloading & Error Handling
+// Asset Preloading
 // ===========================================
 
 /**
- * Preload theme assets to ensure smooth transitions
+ * Preload static background image
  */
 function preloadAssets() {
-    const assets = Object.values(THEME_ASSETS);
+    // Preload static background image
+    const bgImg = new Image();
+    bgImg.src = STATIC_BACKGROUND;
     
-    assets.forEach(({ svg, bg }) => {
-        // Preload SVG
-        const svgImg = new Image();
-        svgImg.src = svg;
-        
-        // Preload background image
-        const bgImg = new Image();
-        bgImg.src = bg;
-    });
-    
-    console.log('Assets preloading initiated');
-}
-
-/**
- * Setup error handlers for the message SVG image
- */
-function setupImageErrorHandlers() {
-    if (messageSvg) {
-        messageSvg.addEventListener('error', (event) => {
-            console.warn('Failed to load SVG:', event.target.src);
-            // Fallback: hide the broken image
-            event.target.style.display = 'none';
-            // Optionally show a text fallback
-            const fallbackText = document.createElement('p');
-            fallbackText.textContent = 'dB Watch';
-            fallbackText.className = 'fallback-text';
-            messageSvg.parentElement.appendChild(fallbackText);
-        });
-        
-        messageSvg.addEventListener('load', () => {
-            messageSvg.style.display = '';
-            // Remove any fallback text
-            const fallback = messageSvg.parentElement.querySelector('.fallback-text');
-            if (fallback) fallback.remove();
-        });
-    }
+    console.log('Background asset preloading initiated');
 }
 
 // ===========================================
