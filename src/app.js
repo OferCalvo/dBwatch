@@ -755,6 +755,21 @@ gearHitArea.addEventListener('mouseleave', () => {
     scheduleGearHide();
 });
 
+// Click-to-show: reveal gear on click (useful for touch devices and precise clicks)
+gearHitArea.addEventListener('click', () => {
+    showGear();
+});
+
+// Touch-to-show: reveal gear on touch (for mobile/touch devices)
+gearHitArea.addEventListener('touchstart', () => {
+    showGear();
+});
+
+// Hide on touch end (after showing, schedule hide as normal)
+gearHitArea.addEventListener('touchend', () => {
+    scheduleGearHide();
+});
+
 // Also handle hover directly on the gear icon
 gearIcon.addEventListener('mouseenter', () => {
     showGear();
@@ -762,6 +777,18 @@ gearIcon.addEventListener('mouseenter', () => {
 
 gearIcon.addEventListener('mouseleave', () => {
     scheduleGearHide();
+});
+
+// Click on gear icon also keeps it visible
+gearIcon.addEventListener('click', (e) => {
+    // Prevent propagation so we don't trigger the dialog toggle twice
+    e.stopPropagation();
+    showGear();
+});
+
+// Touch on gear icon
+gearIcon.addEventListener('touchstart', () => {
+    showGear();
 });
 
 // ===========================================

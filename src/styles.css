@@ -132,6 +132,9 @@ body.transitioning::after {
     z-index: 99;
     /* Invisible hit area */
     background: transparent;
+    /* Ensure it's clickable/touchable on all devices */
+    cursor: pointer;
+    touch-action: manipulation; /* Allow touch without delay */
 }
 
 /* ===========================================
